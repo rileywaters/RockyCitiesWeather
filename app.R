@@ -1,6 +1,10 @@
 # Made by Riley Waters, Nov 2017 for STAT406 Environmentrics
 # Rocky Cities Environmetrics App
 
+# Yes, The whole thing is written in this one file. Sorry
+#Hit Run App in the upper right of this screen to run it.
+#You might need to open in browser and zoom out a bit to get the best experience
+
 
 # Automatically makes sure all required packages are installed and attached
 if (!require("pacman")) install.packages("pacman")
@@ -26,9 +30,9 @@ ui <- dashboardPage(skin = "blue",
         menuItem("About", tabName = "about", icon = icon("question-circle-o")),
         menuItem("Data Explorer", tabName = "dataTable", icon = icon("table")),
         menuItem("Temperature", tabName = "temperature", icon = icon("thermometer-three-quarters"),
-                 menuSubItem("Quick Comparison", tabName = "t1"),
-                 menuSubItem("Advanced Comparison", tabName = "t2"),
-                 menuSubItem("Density Plot", tabName = "t3")
+                 menuSubItem("Monthly", tabName = "t1"),
+                 menuSubItem("Monthly Advanced", tabName = "t2"),
+                 menuSubItem("Density", tabName = "t3")
                  ),
         menuItem("Prediction Models", tabName = "predictionModels", icon = icon("eye")),
         menuItem("Forecast", tabName = "forecast", icon = icon("line-chart")),
@@ -128,14 +132,15 @@ ui <- dashboardPage(skin = "blue",
                       sliderInput(
                         "range", "Years of data to sample from:", min = 1900, 
                           max = 2017, value = c(1900,2017), sep=""
-                      )
+                      ),
+                      selectInput("opt.mmm", "Select which temperature set to visualize:",
+                                  list("Mean Temperature" = "meanT",
+                                       "Max Temperature" = "maxT", 
+                                       "Min Temperature" = "minT"),                 
+                                  selected="meanT")
+                      
                   ),
-                  box(title = "Mean Temperatures by Month", status = "primary", solidHeader = TRUE, collapsible = FALSE, collapsed = FALSE,width = 12,
-                      selectInput("opt.mmm2", "",
-                                  list("Mean Temperature by Month" = "meanT",
-                                       "Max Temperature by Month" = "maxT", 
-                                       "Min Temperature by Month" = "minT"),                 
-                                  selected="meanT"),
+                  box(title = "Temperatures Chart by Month", status = "primary", solidHeader = TRUE, collapsible = FALSE, collapsed = FALSE,width = 12,
                       plotOutput("t1.1.Out")
                   )
                   
@@ -143,12 +148,11 @@ ui <- dashboardPage(skin = "blue",
                 
                 column(width = 6,
                   box(title = "Temperature Graph by Month", status = "primary", solidHeader = TRUE,collapsible = FALSE, collapsed = FALSE,width = 12,
-                      selectInput("opt.mmm", "",
-                                  list("Mean Temperature by Month" = "meanT",
-                                       "Max Temperature by Month" = "maxT", 
-                                       "Min Temperature by Month" = "minT"),                 
-                                  selected="meanT"), 
                       plotOutput("t1.2.Out", height=500)
+                  ),
+                  box(title = "Absolute Max and Min", status = "primary", solidHeader = TRUE,width = 12,
+                      h4(style = "font-familt:Source Sans Pro", textOutput("t1.21.Out")),
+                      h4(style = "font-familt:Source Sans Pro", textOutput("t1.22.Out"))
                   )
                 )
               )
@@ -157,11 +161,21 @@ ui <- dashboardPage(skin = "blue",
       # Next Tab
       tabItem(tabName = "t2",
               fluidRow(
-                box(title = "Averages of Daily Highs and Lows", status = "primary", solidHeader = TRUE,collapsible = FALSE,
-                    plotOutput("t1.3.Out", height=700)
+                column(width = 6,
+                  box(title = "Data Sample Selector", status = "warning", collapsible = FALSE, collapsed = FALSE,width = 12,
+                      sliderInput(
+                        "range2", "Years of data to sample from:", min = 1900, 
+                        max = 2017, value = c(1900,2017), sep=""
+                      )
+                  ),
+                  box(title = "Box Grid", status = "primary", solidHeader = TRUE,collapsible = FALSE, width = 12,
+                      plotOutput("t1.4.Out", height=600)
+                  )
                 ),
-                box(title = "Box Grid", status = "primary", solidHeader = TRUE,collapsible = FALSE,
-                    plotOutput("t1.4.Out", height=700)
+                column(width = 6,
+                  box(title = "Averages of Daily Highs and Lows", status = "primary", solidHeader = TRUE,collapsible = FALSE, width = 12,
+                      plotOutput("t1.3.Out", height = 700)
+                  )
                 )
               )
       ),
@@ -200,7 +214,16 @@ server <- function(input, output) {
                         MeanDmin = round(mean(Min.Temp, na.rm = TRUE),1))
     return(monthly.df) 
   })
-  
+  summarized2.df <- reactive({
+    df <- subset(DataAll, Year >= input$range2[1] & Year <= input$range2[2])
+    monthly.df <- ddply(df,.(City, Month), summarize,    
+                        meanT= round(mean(Mean.Temp, na.rm = TRUE),1) ,
+                        maxT = round(max(Max.Temp, na.rm = TRUE),0) ,    
+                        minT = round(min(Min.Temp, na.rm = TRUE),0),
+                        MeanDmax = round(mean(Max.Temp, na.rm = TRUE),1),
+                        MeanDmin = round(mean(Min.Temp, na.rm = TRUE),1))
+    return(monthly.df) 
+  })
   # Data table content
   output$tableOut <- DT::renderDataTable(DT::datatable(
     options = list(pageLength = 12),
@@ -245,7 +268,7 @@ server <- function(input, output) {
   }
   output$t1.1.Out <- renderPlot({
     smalldf <- summarized.df()
-    mPlot <- fun1.1(smalldf,input$opt.mmm2)
+    mPlot <- fun1.1(smalldf,input$opt.mmm)
     print(mPlot)
   })
   
@@ -264,12 +287,31 @@ server <- function(input, output) {
     p<- p + theme(panel.background = element_rect(fill= "transparent"))
     p<- p+ylab(paste(str))
     p<- p+xlab("Month")
+    p<- p+labs(title=paste(str, "by Month"))
     return(p)
   }
   output$t1.2.Out <- renderPlot({    
     smalldf <- summarized.df()
     mPlot <- fun1.2(smalldf, input$opt.mmm) #meanT = 3, maxT=4, minT=5
     print(mPlot)    
+  })
+  
+  # T1.21 Content
+  output$t1.21.Out <- renderPrint({
+    smalldf <- summarized.df()
+    maxMax <- max(smalldf$maxT)
+    rowMax <- which(grepl(maxMax, DataAll$Max.Temp))
+    maxDate <- DataAll[rowMax[1],2]
+    maxName <- DataAll[rowMax[1],1]
+    cat("The highest high between", input$range[1], "and", input$range[2],"is", maxMax, " Celsius, occuring on",paste(maxDate), "in", paste(maxName))
+  })
+  output$t1.22.Out <- renderPrint({
+    smalldf <- summarized.df()
+    minMin <- min(smalldf$minT)
+    rowMin <- which(grepl(minMin, DataAll$Min.Temp))
+    minDate <- DataAll[rowMin[1],2]
+    minName <- DataAll[rowMin[1],1]
+    cat("The lowest low between", input$range[1], "and", input$range[2],"is", minMin, " Celsius, occuring on",paste(minDate),"in", paste(minName))
   })
   
   # T1.3 Content
@@ -293,14 +335,14 @@ server <- function(input, output) {
     return(p)
   }
   output$t1.3.Out <- renderPlot({
-    monthly.df <- summarized.df()    
+    monthly.df <- summarized2.df()    
     MMbar <- fun1.3(monthly.df)
     print(MMbar)
   }, height=700)
   
   # T1.4 Content
   output$t1.4.Out <- renderPlot({    
-    smalldf <- summarized.df()
+    smalldf <- summarized2.df()
     p <- ggplot(data=smalldf, aes(x = factor(Month, levels=monthList),
                                   y=meanT,
                                   ymin=minT, ymax=maxT))
