@@ -1,5 +1,5 @@
-# Made by Riley Waters, Nov 2017 for COSC406 Environmentrics
-# Calgary Environmetrics App
+# Made by Riley Waters, Nov 2017 for STAT406 Environmentrics
+# Rocky Cities Environmetrics App
 
 
 # Automatically makes sure all required packages are installed and attached
@@ -19,7 +19,9 @@ DataAll$City <- factor(DataAll$City, levels = c(1,2,3), labels = locList);
 ui <- dashboardPage(skin = "blue",
   dashboardHeader(title = "Rocky Cities App"),
     dashboardSidebar(
-      sidebarMenu(id = "tab",
+      sidebarMenu(
+        
+        # Tab names and icons
         menuItem("About", tabName = "about", icon = icon("question-circle-o")),
         menuItem("Data Explorer", tabName = "dataTable", icon = icon("table")),
         menuItem("Temperature", tabName = "temperature", icon = icon("thermometer-three-quarters"),
@@ -34,6 +36,7 @@ ui <- dashboardPage(skin = "blue",
   ),
   dashboardBody(
     tags$head(
+      # Font of the top-right header
       tags$style(
         HTML('.main-header .logo {
               font-family: "Source Sans Pro";
@@ -75,7 +78,7 @@ ui <- dashboardPage(skin = "blue",
                  ),
                  br(),
                  tags$i(style = "font-family: 'Source Sans Pro'; font-size: 16px",
-                        "App created by Riley Waters for COSC406 Environmentrics.",
+                        "App created by Riley Waters for STAT406 Environmentrics.",
                         br(),
                         "Data cleaned and compiled by Riley Waters. Last updated on November 23, 2017."
                  )
@@ -149,7 +152,8 @@ ui <- dashboardPage(skin = "blue",
 server <- function(input, output) {
   
   
-  
+  # returns a summarized dataframe with only City, Month, and Temperatures
+  # MeanDMax and MeanDMin are the averages of the maximum and minimum temperatures
   summarized.df <- reactive({
     df <- DataAll
     monthly.df <- ddply(df,.(City, Month), summarize,    
@@ -161,7 +165,7 @@ server <- function(input, output) {
     return(monthly.df) 
   })
   
-  
+  # Data table content
   output$tableOut <- DT::renderDataTable(DT::datatable(
     options = list(pageLength = 12),
     {
