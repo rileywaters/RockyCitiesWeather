@@ -1,7 +1,7 @@
 # Made by Riley Waters, Nov 2017 for STAT406 Environmentrics
 # Rocky Cities Environmetrics App
 
-# Yes, The whole thing is written in this one file. Sorry
+# Yes, The whole thing is written in this one file.
 #Hit Run App in the upper right of this screen to run it.
 #You might need to open in browser and zoom out a bit to get the best experience
 
@@ -128,7 +128,7 @@ ui <- dashboardPage(skin = "blue",
       tabItem(tabName = "t1",
               fluidPage(
                 column(width = 6,
-                  box(title = "Data Sample Selector", status = "warning", collapsible = FALSE, collapsed = FALSE,width = 12,
+                  box(title = "Data Sample Selector", status = "warning", solidHeader = TRUE,collapsible = FALSE, collapsed = FALSE,width = 12,
                       sliderInput(
                         "range", "Years of data to sample from:", min = 1900, 
                           max = 2017, value = c(1900,2017), sep=""
@@ -162,18 +162,18 @@ ui <- dashboardPage(skin = "blue",
       tabItem(tabName = "t2",
               fluidRow(
                 column(width = 6,
-                  box(title = "Data Sample Selector", status = "warning", collapsible = FALSE, collapsed = FALSE,width = 12,
+                  box(title = "Data Sample Selector", status = "warning", solidHeader = TRUE,collapsible = FALSE, collapsed = FALSE,width = 12,
                       sliderInput(
                         "range2", "Years of data to sample from:", min = 1900, 
                         max = 2017, value = c(1900,2017), sep=""
                       )
                   ),
-                  box(title = "Box Grid", status = "primary", solidHeader = TRUE,collapsible = FALSE, width = 12,
+                  box(title = "Temperature Box Grid", status = "primary", solidHeader = TRUE,collapsible = FALSE, width = 12,
                       plotOutput("t1.4.Out", height=600)
                   )
                 ),
                 column(width = 6,
-                  box(title = "Averages of Daily Highs and Lows", status = "primary", solidHeader = TRUE,collapsible = FALSE, width = 12,
+                  box(title = "Highs and Lows", status = "primary", solidHeader = TRUE,collapsible = FALSE, width = 12,
                       plotOutput("t1.3.Out", height = 700)
                   )
                 )
@@ -253,17 +253,23 @@ server <- function(input, output) {
   # T1.1 Content
   fun1.1 <- function(df, str.column.to.plot) {
     smalldf<-df
-    if(str.column.to.plot == "meanT")
+    if(str.column.to.plot == "meanT"){
       colPlot<-smalldf$meanT
-    if(str.column.to.plot == "minT")
+      str<-"Mean Temperature(C)"}
+    if(str.column.to.plot == "minT"){
       colPlot<-smalldf$minT
-    if(str.column.to.plot == "maxT")
+      str<-"Min Temperature(C)"
+    }
+    if(str.column.to.plot == "maxT"){
       colPlot<-smalldf$maxT
+      str<-"Max Temperature(C)"
+    }
     p<- ggplot(data=smalldf, aes(factor(Month, levels=monthList), City, color=meanT))
     p<-p + geom_text(size=10, label=as.character(round(colPlot, 0)))
     p<- p + scale_color_gradient(low="blue", high="orange")
     p <- p + theme(panel.background = element_rect(fill= "transparent"))
     p<- p+xlab("Month")
+    p<- p+labs(title=paste(str, "by Month"))
     return(p)
   }
   output$t1.1.Out <- renderPlot({
@@ -321,7 +327,6 @@ server <- function(input, output) {
                                 ymin=MeanDmin, ymax=MeanDmax, 
                                 color=City, size=3)) + coord_flip()
     p <- p + facet_grid(Month ~ .)
-    p <- p + xlab("Mean of Daily_Minimum Temperature to Mean of Daily_Maximum Temperature") 
     p <- p + theme( #eliminate background, gridlines, and chart border
       plot.background = element_blank()
       ,panel.background = element_blank()
@@ -332,6 +337,8 @@ server <- function(input, output) {
       ,axis.text.x =element_text(colour="grey20",angle=0,hjust=.5,vjust=.5,face="plain")
       ,legend.position="none"
     )
+    p<- p+labs(title=paste("Average of Daily Highs and Lows"))
+    p <- p + xlab("City") + ylab("Temperature (C)")
     return(p)
   }
   output$t1.3.Out <- renderPlot({
@@ -350,7 +357,7 @@ server <- function(input, output) {
     p <- p + geom_text(data=smalldf, aes(y=maxT+5, label=maxT), color="red")
     p <- p + geom_text(data=smalldf, aes(y=minT-5, label=minT), color="blue")
     p <- p + facet_grid(City ~ .)
-    p <- p + xlab("Month") + ylab("Temperature")
+    p <- p + xlab("Month") + ylab("Temperature (C)")
     print(p)
   })  
 }
