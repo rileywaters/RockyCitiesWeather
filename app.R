@@ -4,7 +4,7 @@
 
 # Automatically makes sure all required packages are installed and attached
 if (!require("pacman")) install.packages("pacman")
-pacman::p_load(shiny, shinydashboard, DT, ggplot2)
+pacman::p_load(shiny, shinydashboard, DT, ggplot2, plyr)
 
 # Read in the cleaned csv
 setwd(dirname(rstudioapi::getActiveDocumentContext()$path))
