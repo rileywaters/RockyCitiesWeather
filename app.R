@@ -15,6 +15,7 @@ DataAll$Date.Time <- as.Date(DataAll$Date.Time)
 DataAll$Month <- factor(DataAll$Month, levels = c(1,2,3,4,5,6,7,8,9,10,11,12), labels = monthList);
 DataAll$City <- factor(DataAll$City, levels = c(1,2,3), labels = locList);
 
+
 #=====================================================================UI=====================================================================
 ui <- dashboardPage(skin = "blue",
   dashboardHeader(title = "Rocky Cities App"),
@@ -25,8 +26,8 @@ ui <- dashboardPage(skin = "blue",
         menuItem("About", tabName = "about", icon = icon("question-circle-o")),
         menuItem("Data Explorer", tabName = "dataTable", icon = icon("table")),
         menuItem("Temperature", tabName = "temperature", icon = icon("thermometer-three-quarters"),
-                 menuSubItem("Monthly", tabName = "t1"),
-                 menuSubItem("Graphical Comparison", tabName = "t2"),
+                 menuSubItem("Quick Comparison", tabName = "t1"),
+                 menuSubItem("Advanced Comparison", tabName = "t2"),
                  menuSubItem("Density Plot", tabName = "t3")
                  ),
         menuItem("Prediction Models", tabName = "predictionModels", icon = icon("eye")),
@@ -121,16 +122,52 @@ ui <- dashboardPage(skin = "blue",
       
       # Temperatures tab content
       tabItem(tabName = "t1",
-              fluidRow(
-                box(title = "Mean Temperatures by Month", status = "primary", solidHeader = TRUE,
-                    plotOutput("t1.1.Out")
+              fluidPage(
+                column(width = 6,
+                  box(title = "Data Sample Selector", status = "warning", collapsible = FALSE, collapsed = FALSE,width = 12,
+                      sliderInput(
+                        "range", "Years of data to sample from:", min = 1900, 
+                          max = 2017, value = c(1900,2017), sep=""
+                      )
+                  ),
+                  box(title = "Mean Temperatures by Month", status = "primary", solidHeader = TRUE, collapsible = FALSE, collapsed = FALSE,width = 12,
+                      selectInput("opt.mmm2", "",
+                                  list("Mean Temperature by Month" = "meanT",
+                                       "Max Temperature by Month" = "maxT", 
+                                       "Min Temperature by Month" = "minT"),                 
+                                  selected="meanT"),
+                      plotOutput("t1.1.Out")
+                  )
+                  
+                ),
+                
+                column(width = 6,
+                  box(title = "Temperature Graph by Month", status = "primary", solidHeader = TRUE,collapsible = FALSE, collapsed = FALSE,width = 12,
+                      selectInput("opt.mmm", "",
+                                  list("Mean Temperature by Month" = "meanT",
+                                       "Max Temperature by Month" = "maxT", 
+                                       "Min Temperature by Month" = "minT"),                 
+                                  selected="meanT"), 
+                      plotOutput("t1.2.Out", height=500)
+                  )
                 )
               )
       ),
       
-      # Prediction model tab content
-      tabItem(tabName = "predictionModels"
+      # Next Tab
+      tabItem(tabName = "t2",
+              fluidRow(
+                box(title = "Averages of Daily Highs and Lows", status = "primary", solidHeader = TRUE,collapsible = FALSE,
+                    plotOutput("t1.3.Out", height=700)
+                ),
+                box(title = "Box Grid", status = "primary", solidHeader = TRUE,collapsible = FALSE,
+                    plotOutput("t1.4.Out", height=700)
+                )
+              )
+      ),
       
+      # Next Tab
+      tabItem(tabName = "t3"
       ),
       
       # Forecasting tab content
@@ -151,17 +188,16 @@ ui <- dashboardPage(skin = "blue",
 #=====================================================================SERVER=====================================================================
 server <- function(input, output) {
   
-  
   # returns a summarized dataframe with only City, Month, and Temperatures
   # MeanDMax and MeanDMin are the averages of the maximum and minimum temperatures
   summarized.df <- reactive({
-    df <- DataAll
+    df <- subset(DataAll, Year >= input$range[1] & Year <= input$range[2])
     monthly.df <- ddply(df,.(City, Month), summarize,    
                         meanT= round(mean(Mean.Temp, na.rm = TRUE),1) ,
                         maxT = round(max(Max.Temp, na.rm = TRUE),0) ,    
                         minT = round(min(Min.Temp, na.rm = TRUE),0),
-                        MeanDMax = round(mean(Max.Temp, na.rm = TRUE),1),
-                        MeanDMin = round(mean(Min.Temp, na.rm = TRUE),1))
+                        MeanDmax = round(mean(Max.Temp, na.rm = TRUE),1),
+                        MeanDmin = round(mean(Min.Temp, na.rm = TRUE),1))
     return(monthly.df) 
   })
   
@@ -192,16 +228,90 @@ server <- function(input, output) {
   ))
   
   # T1 Content
-  output$t1.1.Out <- renderPlot({
-    smalldf <- summarized.df()
-    p<- ggplot(data=smalldf, aes(factor(Month, levels=monthList), City, color=meanT) ) 
-    p<-p + geom_text(size=10, label=as.character(round(smalldf$meanT, 0)))
+  fun1.1 <- function(df, str.column.to.plot) {
+    smalldf<-df
+    if(str.column.to.plot == "meanT")
+      colPlot<-smalldf$meanT
+    if(str.column.to.plot == "minT")
+      colPlot<-smalldf$minT
+    if(str.column.to.plot == "maxT")
+      colPlot<-smalldf$maxT
+    p<- ggplot(data=smalldf, aes(factor(Month, levels=monthList), City, color=meanT))
+    p<-p + geom_text(size=10, label=as.character(round(colPlot, 0)))
     p<- p + scale_color_gradient(low="blue", high="orange")
     p <- p + theme(panel.background = element_rect(fill= "transparent"))
     p<- p+xlab("Month")
-    print(p)
+    return(p)
+  }
+  output$t1.1.Out <- renderPlot({
+    smalldf <- summarized.df()
+    mPlot <- fun1.1(smalldf,input$opt.mmm2)
+    print(mPlot)
   })
   
+  #T1.2 Content
+  fun1.2 <- function(df, str.column.to.plot) {
+    if(str.column.to.plot == "meanT")
+      str<-"Mean Temperature(C)"
+    if(str.column.to.plot == "maxT")
+      str<-"Max Temperature(C)"
+    if(str.column.to.plot == "minT")
+      str<-"Min Temperature(C)"
+    p<- ggplot(data=df, aes_string(x="Month", y=str.column.to.plot, group="City", color="City"))  
+    p<- p+geom_point(size=5)
+    p<- p+geom_line(size=1, alpha=0.9)
+    p<- p + geom_hline(yintercept=c(-40,-30,-20,-10,0,10,20,30,40))
+    p<- p + theme(panel.background = element_rect(fill= "transparent"))
+    p<- p+ylab(paste(str))
+    p<- p+xlab("Month")
+    p<- p+labs(title=paste(str, "by Month"))
+    return(p)
+  }
+  output$t1.2.Out <- renderPlot({    
+    smalldf <- summarized.df()
+    mPlot <- fun1.2(smalldf, input$opt.mmm) #meanT = 3, maxT=4, minT=5
+    print(mPlot)    
+  })
+  
+  # T1.3 Content
+  fun1.3 <- function(df) {
+    p <- ggplot(df) 
+    p <- p + geom_linerange(aes(x=City, 
+                                y = MeanDmin, ymin=MeanDmin, ymax=MeanDmax, 
+                                color=City, size=3)) + coord_flip()
+    p <- p + facet_grid(Month ~ .)
+    p <- p + xlab("Mean of Daily_Minimum Temperature to Mean of Daily_Maximum Temperature") 
+    p <- p + theme( #eliminate background, gridlines, and chart border
+      plot.background = element_blank()
+      ,panel.background = element_blank()
+      ,panel.grid.major = element_line(colour="blue", size=0.5)
+      ,panel.grid.minor = element_line(colour="black", size=0.3)
+      ,axis.ticks=element_blank()
+      ,axis.title.y=element_blank()
+      ,axis.text.x =element_text(colour="grey20",angle=0,hjust=.5,vjust=.5,face="plain")
+      ,legend.position="none"
+    )
+    return(p)
+  }
+  output$t1.3.Out <- renderPlot({
+    monthly.df <- summarized.df()    
+    MMbar <- fun1.3(monthly.df)
+    print(MMbar)
+  }, height=700)
+  
+  # T1.4 Content
+  output$t1.4.Out <- renderPlot({    
+    smalldf <- summarized.df()
+    p <- ggplot(data=smalldf, aes(x = factor(Month, levels=monthList),
+                                  y=meanT,
+                                  ymin=minT, ymax=maxT))
+    p <- p + geom_crossbar(width=0.2, fill="red")
+    p <- p + geom_text(data=smalldf, aes(y=maxT+5, label=maxT), color="red")
+    p <- p + geom_text(data=smalldf, aes(y=minT-5, label=minT), color="blue")
+    p <- p + facet_grid(City ~ .)
+    p <- p + xlab("Month") + ylab("")
+    print(p)
+  })  
 }
 
 shinyApp(ui, server)
