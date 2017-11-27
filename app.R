@@ -227,7 +227,7 @@ server <- function(input, output) {
     }
   ))
   
-  # T1 Content
+  # T1.1 Content
   fun1.1 <- function(df, str.column.to.plot) {
     smalldf<-df
     if(str.column.to.plot == "meanT")
@@ -264,7 +264,6 @@ server <- function(input, output) {
     p<- p + theme(panel.background = element_rect(fill= "transparent"))
     p<- p+ylab(paste(str))
     p<- p+xlab("Month")
-    p<- p+labs(title=paste(str, "by Month"))
     return(p)
   }
   output$t1.2.Out <- renderPlot({    
@@ -277,7 +276,7 @@ server <- function(input, output) {
   fun1.3 <- function(df) {
     p <- ggplot(df) 
     p <- p + geom_linerange(aes(x=City, 
-                                y = MeanDmin, ymin=MeanDmin, ymax=MeanDmax, 
+                                ymin=MeanDmin, ymax=MeanDmax, 
                                 color=City, size=3)) + coord_flip()
     p <- p + facet_grid(Month ~ .)
     p <- p + xlab("Mean of Daily_Minimum Temperature to Mean of Daily_Maximum Temperature") 
@@ -309,7 +308,7 @@ server <- function(input, output) {
     p <- p + geom_text(data=smalldf, aes(y=maxT+5, label=maxT), color="red")
     p <- p + geom_text(data=smalldf, aes(y=minT-5, label=minT), color="blue")
     p <- p + facet_grid(City ~ .)
-    p <- p + xlab("Month") + ylab("")
+    p <- p + xlab("Month") + ylab("Temperature")
     print(p)
   })  
 }
