@@ -6,39 +6,27 @@
 if (!require("pacman")) install.packages("pacman")
 pacman::p_load(shiny, shinydashboard, DT, ggplot2)
 
-# Read in the cleaned csvs
-vancouverAll <- read.csv("vancouver_all_CLEANED.csv", header = TRUE)
-vancouverAll$Date.Time <- as.Date(vancouverAll$Date.Time)
-vancouverAll$Month <- factor(vancouverAll$Month,
-                             levels = c(1,2,3,4,5,6,7,8,9,10,11,12),
-                             labels = c("JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC")
-);
-kelownaAll <- read.csv("kelowna_all_CLEANED.csv", header = TRUE)
-kelownaAll$Date.Time <- as.Date(kelownaAll$Date.Time)
-kelownaAll$Month <- factor(kelownaAll$Month,
-                           levels = c(1,2,3,4,5,6,7,8,9,10,11,12),
-                           labels = c("JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC")
-);
-calgaryAll <- read.csv("calgary_all_CLEANED.csv", header = TRUE)
-calgaryAll$Date.Time <- as.Date(calgaryAll$Date.Time)
-calgaryAll$Month <- factor(calgaryAll$Month,
-                           levels = c(1,2,3,4,5,6,7,8,9,10,11,12),
-                           labels = c("JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC")
-);
+# Read in the cleaned csv
+setwd(dirname(rstudioapi::getActiveDocumentContext()$path))
+monthList <- c("JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC")
+locList <- c("VAN", "KEL", "CAL")
+DataAll <- read.csv("all_CLEANED.csv", header = TRUE)
+DataAll$Date.Time <- as.Date(DataAll$Date.Time)
+DataAll$Month <- factor(DataAll$Month, levels = c(1,2,3,4,5,6,7,8,9,10,11,12), labels = monthList);
+DataAll$City <- factor(DataAll$City, levels = c(1,2,3), labels = locList);
 
 #=====================================================================UI=====================================================================
 ui <- dashboardPage(skin = "blue",
   dashboardHeader(title = "Rocky Cities App"),
     dashboardSidebar(
-      sidebarMenu(
+      sidebarMenu(id = "tab",
         menuItem("About", tabName = "about", icon = icon("question-circle-o")),
-        menuItem("Data Explorer", tabName = "dataTable", icon = icon("table"),
-                 menuSubItem("Vancouver", tabName = "vancouverTable"),
-                 menuSubItem("Kelowna", tabName = "kelownaTable"),
-                 menuSubItem("Calgary", tabName = "calgaryTable")
-                 
-        ),
-        menuItem("Visualizations", tabName = "visualizations", icon = icon("bar-chart")),
+        menuItem("Data Explorer", tabName = "dataTable", icon = icon("table")),
+        menuItem("Temperature", tabName = "temperature", icon = icon("thermometer-three-quarters"),
+                 menuSubItem("Monthly", tabName = "t1"),
+                 menuSubItem("Graphical Comparison", tabName = "t2"),
+                 menuSubItem("Density Plot", tabName = "t3")
+                 ),
         menuItem("Prediction Models", tabName = "predictionModels", icon = icon("eye")),
         menuItem("Forecast", tabName = "forecast", icon = icon("line-chart")),
         menuItem("Dashboard", tabName = "dashboard", icon = icon("desktop"))
@@ -98,44 +86,19 @@ ui <- dashboardPage(skin = "blue",
       ),
       
       # Data Explorer tab content
-      tabItem(tabName = "vancouverTable",
+      tabItem(tabName = "dataTable",
               fluidRow(
-                column(4, selectInput("yearV","Year:", c("All",unique(as.character(vancouverAll$Year))))
+                column(3, selectInput("tableCity","City:", c("All",unique(as.character(DataAll$City))))
                 ),
-                column(4,selectInput("monthV","Month:", c("All",unique(as.character(vancouverAll$Month))))
+                column(3, selectInput("tableYear","Year:", c("All",unique(as.character(DataAll$Year))))
                 ),
-                column(4,selectInput("dayV","Day:", c("All",unique(as.character(vancouverAll$Day))))
+                column(3,selectInput("tableMonth","Month:", c("All",unique(as.character(DataAll$Month))))
+                ),
+                column(3,selectInput("tableDay","Day:", c("All",unique(as.character(DataAll$Day))))
                 )
               ),
               fluidRow(
-                DT::dataTableOutput("vancouverOut")
-              ),
-              br(),br(),
-              fluidRow(
-                tags$i(style = "font-family: 'Source Sans Pro'; font-size: 16px",
-                       "Max.Temp, Min.Temp, Mean.Temp, Heat.Deg.Days, Cool.Deg.Days:", tags$strong("Celcius"),
-                       br(),
-                       "Total.Rain, Total.Precip:", tags$strong("mm"),
-                       br(),
-                       "Snow.on.Grnd, Total.Snow:", tags$strong("cm"),
-                       br(),
-                       "Dir.of.MaxGust:", tags$strong("Tens of degrees"),
-                       br(),
-                       "Spd.of.MaxGust:", tags$strong("km/h")
-                )
-              )
-      ),
-      tabItem(tabName = "kelownaTable",
-              fluidRow(
-                column(4, selectInput("yearK","Year:", c("All",unique(as.character(kelownaAll$Year))))
-                ),
-                column(4,selectInput("monthK","Month:", c("All",unique(as.character(kelownaAll$Month))))
-                ),
-                column(4,selectInput("dayK","Day:", c("All",unique(as.character(kelownaAll$Day))))
-                )
-              ),
-              fluidRow(
-                DT::dataTableOutput("kelownaOut")
+                DT::dataTableOutput("tableOut")
               ),
               br(),br(),
               fluidRow(
@@ -146,35 +109,6 @@ ui <- dashboardPage(skin = "blue",
                        br(),
                        "Snow.on.Grnd, Total.Snow:", tags$strong("cm"),
                        br(),
-                       "Dir.of.MaxGust:", tags$strong("Tens of degrees"),
-                       br(),
-                       "Spd.of.MaxGust:", tags$strong("km/h")
-                )
-              )
-      ),
-      tabItem(tabName = "calgaryTable",
-              fluidRow(
-                column(4, selectInput("yearC","Year:", c("All",unique(as.character(calgaryAll$Year))))
-                ),
-                column(4,selectInput("monthC","Month:", c("All",unique(as.character(calgaryAll$Month))))
-                ),
-                column(4,selectInput("dayC","Day:", c("All",unique(as.character(calgaryAll$Day))))
-                )
-              ),
-              fluidRow(
-                DT::dataTableOutput("calgaryOut")
-              ),
-              br(),br(),
-              fluidRow(
-                tags$i(style = "font-family: 'Source Sans Pro'; font-size: 16px",
-                       "Max.Temp, Min.Temp, Mean.Temp, Heat.Deg.Days, Cool.Deg.Days:", tags$strong("Celcius"),
-                       br(),
-                       "Total.Rain, Total.Precip:", tags$strong("mm"),
-                       br(),
-                       "Snow.on.Grnd, Total.Snow:", tags$strong("cm"),
-                       br(),
-                       "Dir.of.MaxGust:", tags$strong("Tens of degrees"),
-                       br(),
                        "Spd.of.MaxGust:", tags$strong("km/h")
                 )
               )
@@ -182,9 +116,13 @@ ui <- dashboardPage(skin = "blue",
       
       
       
-      # Visualizations tab content
-      tabItem(tabName = "visualizations"
-          
+      # Temperatures tab content
+      tabItem(tabName = "t1",
+              fluidRow(
+                box(title = "Mean Temperatures by Month", status = "primary", solidHeader = TRUE,
+                    plotOutput("t1.1.Out")
+                )
+              )
       ),
       
       # Prediction model tab content
@@ -212,53 +150,53 @@ server <- function(input, output) {
   
   
   
-  # Data Explorer components
-  output$calgaryOut <- DT::renderDataTable(DT::datatable(
+  summarized.df <- reactive({
+    df <- DataAll
+    monthly.df <- ddply(df,.(City, Month), summarize,    
+                        meanT= round(mean(Mean.Temp, na.rm = TRUE),1) ,
+                        maxT = round(max(Max.Temp, na.rm = TRUE),0) ,    
+                        minT = round(min(Min.Temp, na.rm = TRUE),0),
+                        MeanDMax = round(mean(Max.Temp, na.rm = TRUE),1),
+                        MeanDMin = round(mean(Min.Temp, na.rm = TRUE),1))
+    return(monthly.df) 
+  })
+  
+  
+  output$tableOut <- DT::renderDataTable(DT::datatable(
     options = list(pageLength = 12),
-    {tableData <- calgaryAll
-    if (input$yearC != "All") {
-      tableData <- tableData[tableData$Year == input$yearC,]
-    }
-    if (input$monthC != "All") {
-      tableData <- tableData[tableData$Month == input$monthC,]
-    }
-    if (input$dayC != "All") {
-      tableData <- tableData[tableData$Day == input$dayC,]
-    }
-    tableData
-    }
-  ))
-  output$kelownaOut <- DT::renderDataTable(DT::datatable(
-    options = list(pageLength = 12),
-    {tableData <- kelownaAll
-    if (input$yearK != "All") {
-      tableData <- tableData[tableData$Year == input$yearK,]
-    }
-    if (input$monthK != "All") {
-      tableData <- tableData[tableData$Month == input$monthK,]
-    }
-    if (input$dayK != "All") {
-      tableData <- tableData[tableData$Day == input$dayK,]
-    }
-    tableData
-    }
-  ))
-  output$vancouverOut <- DT::renderDataTable(DT::datatable(
-    options = list(pageLength = 12),
-    {tableData <- vancouverAll
-    if (input$yearV != "All") {
-      tableData <- tableData[tableData$Year == input$yearV,]
-    }
-    if (input$monthV != "All") {
-      tableData <- tableData[tableData$Month == input$monthV,]
-    }
-    if (input$dayV != "All") {
-      tableData <- tableData[tableData$Day == input$dayV,]
-    }
-    tableData
+    {
+      if(input$tableCity == "VAN"){
+        tableData <- subset(DataAll, DataAll$City == "VAN")}
+      else if(input$tableCity == "KEL"){
+        tableData <- subset(DataAll, DataAll$City == "KEL")}
+      else if(input$tableCity == "CAL"){
+        tableData <- subset(DataAll, DataAll$City == "CAL")}
+      else{
+        tableData <- DataAll
+      }
+      if (input$tableYear != "All") {
+        tableData <- tableData[tableData$Year == input$tableYear,]
+      }
+      if (input$tableMonth != "All") {
+        tableData <- tableData[tableData$Month == input$tableMonth,]
+      }
+      if (input$tableDay != "All") {
+        tableData <- tableData[tableData$Day == input$tableDay,]
+      }
+      tableData
     }
   ))
   
+  # T1 Content
+  output$t1.1.Out <- renderPlot({
+    smalldf <- summarized.df()
+    p<- ggplot(data=smalldf, aes(factor(Month, levels=monthList), City, color=meanT) ) 
+    p<-p + geom_text(size=10, label=as.character(round(smalldf$meanT, 0)))
+    p<- p + scale_color_gradient(low="blue", high="orange")
+    p <- p + theme(panel.background = element_rect(fill= "transparent"))
+    p<- p+xlab("Month")
+    print(p)
+  })
   
 }
 
