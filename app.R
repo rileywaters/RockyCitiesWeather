@@ -13,7 +13,7 @@ pacman::p_load(shiny, shinydashboard, DT, ggplot2, plyr)
 # Read in the cleaned csv
 setwd(dirname(rstudioapi::getActiveDocumentContext()$path))
 monthList <- c("JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC")
-locList <- c("VAN", "KEL", "CAL")
+locList <- c("Vancouver", "Kelowna", "Calgary")
 DataAll <- read.csv("all_CLEANED.csv", header = TRUE)
 DataAll$Date.Time <- as.Date(DataAll$Date.Time)
 DataAll$Month <- factor(DataAll$Month, levels = c(1,2,3,4,5,6,7,8,9,10,11,12), labels = monthList);
@@ -196,7 +196,7 @@ ui <- dashboardPage(skin = "blue",
                                        selected="meanT")
                        ),
                        box(title = "Temperature Density of Days", status = "primary", solidHeader = TRUE,collapsible = FALSE, width = 12,
-                           plotOutput("t1.5.Out", height=600)
+                           plotOutput("t1.5.Out", height=500)
                        )
                 ),
                 column(width = 6,
@@ -251,15 +251,15 @@ server <- function(input, output) {
     df <- subset(DataAll, Year >= input$range3[1] & Year <= input$range3[2])
     if(input$opt.mmm2 == "meanT"){
       df <- df[!is.na(df$Mean.Temp),]
-      df$tempPlot <- df$Mean.Temp
+      df$Temperature <- df$Mean.Temp
     }
     else if(input$opt.mmm2 == "maxT"){
       df <- df[!is.na(df$Max.Temp),]
-      df$tempPlot <- df$Max.Temp
+      df$Temperature <- df$Max.Temp
     }
     else if(input$opt.mmm2 == "minT"){
       df <- df[!is.na(df$Min.Temp),]
-      df$tempPlot <- df$Min.Temp
+      df$Temperature <- df$Min.Temp
     }
     return(df) 
   })
@@ -267,12 +267,12 @@ server <- function(input, output) {
   output$tableOut <- DT::renderDataTable(DT::datatable(
     options = list(pageLength = 12),
     {
-      if(input$tableCity == "VAN"){
-        tableData <- subset(DataAll, DataAll$City == "VAN")}
-      else if(input$tableCity == "KEL"){
-        tableData <- subset(DataAll, DataAll$City == "KEL")}
-      else if(input$tableCity == "CAL"){
-        tableData <- subset(DataAll, DataAll$City == "CAL")}
+      if(input$tableCity == "Vancouver"){
+        tableData <- subset(DataAll, DataAll$City == "Vancouver")}
+      else if(input$tableCity == "Kelowna"){
+        tableData <- subset(DataAll, DataAll$City == "Kelowna")}
+      else if(input$tableCity == "Calgary"){
+        tableData <- subset(DataAll, DataAll$City == "Calgary")}
       else{
         tableData <- DataAll
       }
@@ -411,7 +411,7 @@ server <- function(input, output) {
     if(input$opt.mmm2 == "minT")
       str<-"Min Temperature(C)"
     colorRange<-colorRampPalette(c(rgb(0,0,1), rgb(1,0.7,0) ))
-    p<- ggplot(df, aes(tempPlot, color=City)) 
+    p<- ggplot(df, aes(Temperature, color=City)) 
     p<- p + stat_density(position="identity",geom="line", size=2)
     p <- p + geom_vline(xintercept=c(10,20, 30),
                         colour="#990000", linetype="dashed")
@@ -437,7 +437,7 @@ server <- function(input, output) {
     label10s = c(as.character(seq(-30,30,10)))
     wx_range<-colorRampPalette(c(rgb(0,0.5,1), rgb(1,0.35,0) ))
     #Bin the temperatures into 10 degree buckets, using the "cut" funtion
-    df$TempBucket <- cut(df$tempPlot, breaks=brk, labels=label10s)
+    df$TempBucket <- cut(df$Temperature, breaks=brk, labels=label10s)
     p <- ggplot(data=df, aes(City, fill=TempBucket )) + geom_bar()  
     p <- p + scale_fill_manual(values=wx_range(11))
     p <- p + ylab("Number of Days in Bucket")
