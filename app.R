@@ -229,7 +229,7 @@ ui <- dashboardPage(skin = "blue",
       ),
       tabItem(tabName = "m1",
               column(width = 6,
-                box(title = "Test Selector", status = "warning", solidHeader = TRUE,collapsible = FALSE, collapsed = FALSE,width = 12,
+                box(title = "One Sample Test Selector", status = "warning", solidHeader = TRUE,collapsible = FALSE, collapsed = FALSE,width = 12,
                     selectInput("m1opt", "Select City:",
                                 list("Vancouver",
                                      "Kelowna", 
@@ -251,7 +251,7 @@ ui <- dashboardPage(skin = "blue",
                 )
               ),
               column(width = 6,
-                box(title = "Results", status = "primary", solidHeader = TRUE,collapsible = FALSE, collapsed = FALSE,width = 12,
+                box(title = "One Sample Results", status = "primary", solidHeader = TRUE,collapsible = FALSE, collapsed = FALSE,width = 12,
                     verbatimTextOutput("m1.Out")
                     )
               )
@@ -548,7 +548,7 @@ server <- function(input, output) {
     if(input$m1opt == "Calgary")
       df <- subset(DataAll, City == "Calgary"& Year >=2006)
 
-    df[,input$m1opt2]
+    y <- df[,input$m1opt2]
     m <- input$m1opt3
     t.test(y,mu=m)
   })
