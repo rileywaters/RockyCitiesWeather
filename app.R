@@ -247,7 +247,7 @@ ui <- dashboardPage(skin = "blue",
                                      "Snow.on.Grnd",
                                      "Spd.of.Max.Gust"),                 
                                 selected="Mean.Temp"),
-                    numericInput("m1opt3", "Mean to test against:", value = 10),
+                    numericInput("m1opt3", "Mean to test against:", value = 10.1),
                     sliderInput(
                       "m1opt4", "Years of data to sample from:", min = 1900, 
                       max = 2017, value = c(1900,2017), sep=""
@@ -553,8 +553,12 @@ server <- function(input, output) {
       df <- subset(DataAll, City == "Calgary"& Year >=input$m1opt4[1] & Year <= input$m1opt4[2])
 
     y <- df[,input$m1opt2]
-    m <- input$m1opt3
-    t.test(y,mu=m)
+    if(is.na(input$m1opt3))
+     print("No mean entered")
+    else{
+      m <- input$m1opt3
+      t.test(y,mu=m)
+    }
   })
   
   
