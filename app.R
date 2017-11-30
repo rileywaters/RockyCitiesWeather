@@ -168,12 +168,12 @@ ui <- dashboardPage(skin = "blue",
                         max = 2017, value = c(1900,2017), sep=""
                       )
                   ),
-                  box(title = "Temperature Box Grid", status = "primary", solidHeader = TRUE,collapsible = FALSE, width = 12,
+                  box(title = "Highs and Lows", status = "primary", solidHeader = TRUE,collapsible = FALSE, width = 12,
                       plotOutput("t1.4.Out", height=600)
                   )
                 ),
                 column(width = 6,
-                  box(title = "Highs and Lows", status = "primary", solidHeader = TRUE,collapsible = FALSE, width = 12,
+                  box(title = "Average of Highs and Lows", status = "primary", solidHeader = TRUE,collapsible = FALSE, width = 12,
                       plotOutput("t1.3.Out", height = 700)
                   )
                 )
@@ -188,15 +188,20 @@ ui <- dashboardPage(skin = "blue",
                            sliderInput(
                              "range3", "Years of data to sample from:", min = 1900, 
                              max = 2017, value = c(1900,2017), sep=""
-                           )
+                           ),
+                           selectInput("opt.mmm2", "Select which temperature set to visualize:",
+                                       list("Mean Temperature" = "meanT",
+                                            "Max Temperature" = "maxT", 
+                                            "Min Temperature" = "minT"),                 
+                                       selected="meanT")
                        ),
-                       box(title = "Temperature Density", status = "primary", solidHeader = TRUE,collapsible = FALSE, width = 12,
+                       box(title = "Temperature Density of Days", status = "primary", solidHeader = TRUE,collapsible = FALSE, width = 12,
                            plotOutput("t1.5.Out", height=600)
                        )
                 ),
                 column(width = 6,
-                       box(title = "Example", status = "primary", solidHeader = TRUE,collapsible = FALSE, width = 12
-                           
+                       box(title = "Temperature Buckets of Days", status = "primary", solidHeader = TRUE,collapsible = FALSE, width = 12,
+                           plotOutput("t1.6.Out", height = 600)
                        )
                 )
               )
@@ -244,7 +249,18 @@ server <- function(input, output) {
   })
   summarized3.df <- reactive({
     df <- subset(DataAll, Year >= input$range3[1] & Year <= input$range3[2])
-    df <- df[!is.na(df$Mean.Temp),]
+    if(input$opt.mmm2 == "meanT"){
+      df <- df[!is.na(df$Mean.Temp),]
+      df$tempPlot <- df$Mean.Temp
+    }
+    else if(input$opt.mmm2 == "maxT"){
+      df <- df[!is.na(df$Max.Temp),]
+      df$tempPlot <- df$Max.Temp
+    }
+    else if(input$opt.mmm2 == "minT"){
+      df <- df[!is.na(df$Min.Temp),]
+      df$tempPlot <- df$Min.Temp
+    }
     return(df) 
   })
   # Data table content
@@ -360,7 +376,7 @@ server <- function(input, output) {
       ,axis.text.x =element_text(colour="grey20",angle=0,hjust=.5,vjust=.5,face="plain")
       ,legend.position="none"
     )
-    p<- p+labs(title=paste("Average of Daily Highs and Lows"))
+    p<- p+labs(title=paste("Average of Daily Highs and Lows by Month"))
     p <- p + xlab("City") + ylab("Temperature (C)")
     return(p)
   }
@@ -381,16 +397,21 @@ server <- function(input, output) {
     p <- p + geom_text(data=smalldf, aes(y=minT-5, label=minT), color="blue")
     p <- p + facet_grid(City ~ .)
     p <- p + xlab("Month") + ylab("Temperature (C)")
+    p <- p + labs(title = "Temperature Highs and Lows by Month")
     print(p)
   }) 
   
-  # r1.5 Content
-  
-  
+  # t1.5 Content
   output$t1.5.Out <- renderPlot({
     df <- summarized3.df()
+    if(input$opt.mmm2 == "meanT")
+      str<-"Mean Temperature(C)"
+    if(input$opt.mmm2 == "maxT")
+      str<-"Max Temperature(C)"
+    if(input$opt.mmm2 == "minT")
+      str<-"Min Temperature(C)"
     colorRange<-colorRampPalette(c(rgb(0,0,1), rgb(1,0.7,0) ))
-    p<- ggplot(df, aes(Mean.Temp, color=City)) 
+    p<- ggplot(df, aes(tempPlot, color=City)) 
     p<- p + stat_density(position="identity",geom="line", size=2)
     p <- p + geom_vline(xintercept=c(10,20, 30),
                         colour="#990000", linetype="dashed")
@@ -399,9 +420,41 @@ server <- function(input, output) {
     p <- p + geom_vline(xintercept=c(-10,-20,-30),
                         colour="blue", linetype="dashed")
     p <- p + ylab("Density of Days")
-    p <- p + labs(title = "Comparing Temperature Density Across Cities")
+    p<- p+labs(title=paste(str, "Densities"))
     print(p)    
   })
+  
+  #t1.6 content
+  output$t1.6.Out <- renderPlot({
+    df <- summarized3.df()
+    if(input$opt.mmm2 == "meanT")
+      str<-"Mean Temperature(C)"
+    if(input$opt.mmm2 == "maxT")
+      str<-"Max Temperature(C)"
+    if(input$opt.mmm2 == "minT")
+      str<-"Min Temperature(C)"
+    brk = c(seq(-30,30,10),50)
+    label10s = c(as.character(seq(-30,30,10)))
+    wx_range<-colorRampPalette(c(rgb(0,0.5,1), rgb(1,0.35,0) ))
+    #Bin the temperatures into 10 degree buckets, using the "cut" funtion
+    df$TempBucket <- cut(df$tempPlot, breaks=brk, labels=label10s)
+    p <- ggplot(data=df, aes(City, fill=TempBucket )) + geom_bar()  
+    p <- p + scale_fill_manual(values=wx_range(11))
+    p <- p + ylab("Number of Days in Bucket")
+    p<- p+labs(title=paste(str, "Buckets"))
+    p <- p + theme( #eliminate background, gridlines, and chart border
+      plot.background = element_blank()
+      ,panel.border = element_blank()
+      ,panel.background = element_rect("black")
+      #,axis.text.y=element_blank()
+      ,axis.ticks=element_blank()
+      ,axis.title.x=element_blank()
+      ,axis.text.x = element_text(colour="grey20",angle=0,hjust=.5,vjust=.5,face="plain")
+    )  
+    print(p)  
+  })
+  
+  
 }
 
 shinyApp(ui, server)
