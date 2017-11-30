@@ -33,11 +33,14 @@ ui <- dashboardPage(skin = "blue",
                  menuSubItem("Monthly", tabName = "t1"),
                  menuSubItem("Monthly Advanced", tabName = "t2"),
                  menuSubItem("Density", tabName = "t3"),
-                 menuSubItem("Density Histogram", tabName = "t4")
+                 menuSubItem("Histogram", tabName = "t4")
                  ),
-        menuItem("Testing", tabName = "test", icon = icon("eye")),
-        menuItem("Forecast", tabName = "forecast", icon = icon("line-chart")),
-        menuItem("Dashboard", tabName = "dashboard", icon = icon("desktop"))
+        menuItem("Testing", tabName = "test", icon = icon("eye"),
+                 menuSubItem("One-Way", tabName = "m1"),
+                 menuSubItem("Two-Way", tabName = "m2"),
+                 menuSubItem("ANOVA", tabName = "m3"),
+                 menuSubItem("Modelling", tabName = "m3")
+        )
     )
   ),
   dashboardBody(
@@ -68,7 +71,7 @@ ui <- dashboardPage(skin = "blue",
               fluidRow(
                 column(6, offset = 3,
                  p(style = "font-family: 'Source Sans Pro'; font-size: 18px",
-                   "This is an application for interacting with historical weather data from Vancouver BC, Kelowna BC, and Calgary AB. 
+                   "This is an application for interacting with historical climate data from Vancouver BC, Kelowna BC, and Calgary AB. 
                    Despite being close in location, these cities experience unique climates due their positions relative to the Pacific Ocean, Okanagan Valley, Rocky Mountains, and Canadian Praries.
                    Data was collected by",
                    a("Climate Canada", href = "http://climate.weather.gc.ca/"),
@@ -203,22 +206,57 @@ ui <- dashboardPage(skin = "blue",
                 column(width = 6,
                        box(title = "Temperature Buckets of Days", status = "primary", solidHeader = TRUE,collapsible = FALSE, width = 12,
                            plotOutput("t1.6.Out", height = 600)
-                       ),
-                       box(title = "Histogram of Temperature", status = "primary", solidHeader = TRUE,collapsible = FALSE, width = 12,
-                           sliderInput(inputId = "binwidth",
-                                       label = "Choose Temperature Band (degrees C)",
-                                       min = 1, max = 10, step = 1, value = 2),
-                           plotOutput("t1.7.Out", height = 600)
                        )
+                       
                 )
               )
       ),
       
       # T4 tab content
-      tabItem(tabName = "t4"
-        
+      tabItem(tabName = "t4",
+              box(title = "Data Sample Selector", status = "warning", solidHeader = TRUE,collapsible = FALSE, collapsed = FALSE,width = 12,
+                  sliderInput(
+                    "range4", "Years of data to sample from:", min = 1900, 
+                    max = 2017, value = c(1900,2017), sep=""
+                  )
+              ),
+              box(title = "Histogram of Temperature", status = "primary", solidHeader = TRUE,collapsible = FALSE, width = 12,
+                  sliderInput(inputId = "binwidth",
+                              label = "Choose Temperature Band (degrees C)",
+                              min = 1, max = 10, step = 1, value = 2),
+                  plotOutput("t1.7.Out", height = 600)
+              )
+      ),
+      tabItem(tabName = "m1",
+              column(width = 6,
+                box(title = "Test Selector", status = "warning", solidHeader = TRUE,collapsible = FALSE, collapsed = FALSE,width = 12,
+                    selectInput("m1opt", "Select City:",
+                                list("Vancouver",
+                                     "Kelowna", 
+                                     "Calgary"),                 
+                                selected="Vancouver"),
+                    selectInput("m1opt2", "Select Response:",
+                                list("Mean.Temp",
+                                     "Max.Temp", 
+                                     "Min.Temp",
+                                     "Heat.Deg.Days",
+                                     "Cool.Deg.Days",
+                                     "Total.Rain",
+                                     "Total.Snow",
+                                     "Total.Precip",
+                                     "Snow.on.Grnd",
+                                     "Spd.of.Max.Gust"),                 
+                                selected="Mean.Temp"),
+                    numericInput("m1opt3", "Mean to test against:", value = 10)
+                )
+              ),
+              column(width = 6,
+                box(title = "Results", status = "primary", solidHeader = TRUE,collapsible = FALSE, collapsed = FALSE,width = 12,
+                    verbatimTextOutput("m1.Out")
+                    )
+              )
+              
       )
-      
     )
   )
 )
@@ -251,6 +289,22 @@ server <- function(input, output) {
   })
   summarized3.df <- reactive({
     df <- subset(DataAll, Year >= input$range3[1] & Year <= input$range3[2])
+    if(input$opt.mmm2 == "meanT"){
+      df <- df[!is.na(df$Mean.Temp),]
+      df$Temperature <- df$Mean.Temp
+    }
+    else if(input$opt.mmm2 == "maxT"){
+      df <- df[!is.na(df$Max.Temp),]
+      df$Temperature <- df$Max.Temp
+    }
+    else if(input$opt.mmm2 == "minT"){
+      df <- df[!is.na(df$Min.Temp),]
+      df$Temperature <- df$Min.Temp
+    }
+    return(df) 
+  })
+  summarized4.df <- reactive({
+    df <- subset(DataAll, Year >= input$range4[1] & Year <= input$range4[2])
     if(input$opt.mmm2 == "meanT"){
       df <- df[!is.na(df$Mean.Temp),]
       df$Temperature <- df$Mean.Temp
@@ -458,8 +512,9 @@ server <- function(input, output) {
     print(p)  
   })
   
+  # t1.7 content
   output$t1.7.Out <- renderPlot({
-    df <- summarized3.df()
+    df <- summarized4.df()
     if(input$opt.mmm2 == "meanT")
       str<-"Mean Temperature(C)"
     if(input$opt.mmm2 == "maxT")
@@ -483,6 +538,21 @@ server <- function(input, output) {
     m <- m + theme(legend.position="none")
     print(m)
   })
+  
+  # m1 content
+  output$m1.Out <- renderPrint({
+    if(input$m1opt == "Vancouver")
+      df <- subset(DataAll, City == "Vancouver"& Year >=2006)
+    if(input$m1opt == "Kelowna")
+      df <- subset(DataAll, City == "Kelowna"& Year >=2006)
+    if(input$m1opt == "Calgary")
+      df <- subset(DataAll, City == "Calgary"& Year >=2006)
+
+    df[,input$m1opt2]
+    m <- input$m1opt3
+    t.test(y,mu=m)
+  })
+  
   
   
 }
