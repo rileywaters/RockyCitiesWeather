@@ -181,7 +181,25 @@ ui <- dashboardPage(skin = "blue",
       ),
       
       # Next Tab
-      tabItem(tabName = "t3"
+      tabItem(tabName = "t3",
+              fluidRow(
+                column(width = 6,
+                       box(title = "Data Sample Selector", status = "warning", solidHeader = TRUE,collapsible = FALSE, collapsed = FALSE,width = 12,
+                           sliderInput(
+                             "range3", "Years of data to sample from:", min = 1900, 
+                             max = 2017, value = c(1900,2017), sep=""
+                           )
+                       ),
+                       box(title = "Temperature Density", status = "primary", solidHeader = TRUE,collapsible = FALSE, width = 12,
+                           plotOutput("t1.5.Out", height=600)
+                       )
+                ),
+                column(width = 6,
+                       box(title = "Example", status = "primary", solidHeader = TRUE,collapsible = FALSE, width = 12
+                           
+                       )
+                )
+              )
       ),
       
       # Forecasting tab content
@@ -223,6 +241,11 @@ server <- function(input, output) {
                         MeanDmax = round(mean(Max.Temp, na.rm = TRUE),1),
                         MeanDmin = round(mean(Min.Temp, na.rm = TRUE),1))
     return(monthly.df) 
+  })
+  summarized3.df <- reactive({
+    df <- subset(DataAll, Year >= input$range3[1] & Year <= input$range3[2])
+    df <- df[!is.na(df$Mean.Temp),]
+    return(df) 
   })
   # Data table content
   output$tableOut <- DT::renderDataTable(DT::datatable(
@@ -359,7 +382,26 @@ server <- function(input, output) {
     p <- p + facet_grid(City ~ .)
     p <- p + xlab("Month") + ylab("Temperature (C)")
     print(p)
-  })  
+  }) 
+  
+  # r1.5 Content
+  
+  
+  output$t1.5.Out <- renderPlot({
+    df <- summarized3.df()
+    colorRange<-colorRampPalette(c(rgb(0,0,1), rgb(1,0.7,0) ))
+    p<- ggplot(df, aes(Mean.Temp, color=City)) 
+    p<- p + stat_density(position="identity",geom="line", size=2)
+    p <- p + geom_vline(xintercept=c(10,20, 30),
+                        colour="#990000", linetype="dashed")
+    p <- p + geom_vline(xintercept=0,
+                        colour="#000000", linetype="dashed")
+    p <- p + geom_vline(xintercept=c(-10,-20,-30),
+                        colour="blue", linetype="dashed")
+    p <- p + ylab("Density of Days")
+    p <- p + labs(title = "Comparing Temperature Density Across Cities")
+    print(p)    
+  })
 }
 
 shinyApp(ui, server)
