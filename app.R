@@ -29,12 +29,13 @@ ui <- dashboardPage(skin = "blue",
         # Tab names and icons
         menuItem("About", tabName = "about", icon = icon("question-circle-o")),
         menuItem("Data Explorer", tabName = "dataTable", icon = icon("table")),
-        menuItem("Temperature", tabName = "temperature", icon = icon("thermometer-three-quarters"),
+        menuItem("Visualizations", tabName = "vis", icon = icon("line-chart"),
                  menuSubItem("Monthly", tabName = "t1"),
                  menuSubItem("Monthly Advanced", tabName = "t2"),
-                 menuSubItem("Density", tabName = "t3")
+                 menuSubItem("Density", tabName = "t3"),
+                 menuSubItem("Density Histogram", tabName = "t4")
                  ),
-        menuItem("Prediction Models", tabName = "predictionModels", icon = icon("eye")),
+        menuItem("Testing", tabName = "test", icon = icon("eye")),
         menuItem("Forecast", tabName = "forecast", icon = icon("line-chart")),
         menuItem("Dashboard", tabName = "dashboard", icon = icon("desktop"))
     )
@@ -77,9 +78,9 @@ ui <- dashboardPage(skin = "blue",
                    "By clicking the tabs on the left, you can:"
                  ),
                  tags$ul(style = "font-family: 'Source Sans Pro'; font-size: 16px",
-                   tags$li("Sort and filter the data tables"), 
-                   tags$li("Interact with data visualizations"), 
-                   tags$li("Make predictions for future metrics")
+                   tags$li("Sort and filter the data table"), 
+                   tags$li("Compare temperature and precipitation visualizations"), 
+                   tags$li("Fit models on the data and run randomization tests")
                  ),
                  br(),
                  tags$i(style = "font-family: 'Source Sans Pro'; font-size: 16px",
@@ -202,19 +203,20 @@ ui <- dashboardPage(skin = "blue",
                 column(width = 6,
                        box(title = "Temperature Buckets of Days", status = "primary", solidHeader = TRUE,collapsible = FALSE, width = 12,
                            plotOutput("t1.6.Out", height = 600)
+                       ),
+                       box(title = "Histogram of Temperature", status = "primary", solidHeader = TRUE,collapsible = FALSE, width = 12,
+                           sliderInput(inputId = "binwidth",
+                                       label = "Choose Temperature Band (degrees C)",
+                                       min = 1, max = 10, step = 1, value = 2),
+                           plotOutput("t1.7.Out", height = 600)
                        )
                 )
               )
       ),
       
-      # Forecasting tab content
-      tabItem(tabName = "forecast"
+      # T4 tab content
+      tabItem(tabName = "t4"
         
-      ),
-      
-      # Dashboard content
-      tabItem(tabName = "dashboard"
-              
       )
       
     )
@@ -263,6 +265,11 @@ server <- function(input, output) {
     }
     return(df) 
   })
+  
+  brk = c(seq(-30,30,10),50)
+  label10s = c(as.character(seq(-30,30,10)))
+  wx_range<-colorRampPalette(c(rgb(0,0.5,1), rgb(1,0.35,0) ))
+  
   # Data table content
   output$tableOut <- DT::renderDataTable(DT::datatable(
     options = list(pageLength = 12),
@@ -433,9 +440,6 @@ server <- function(input, output) {
       str<-"Max Temperature(C)"
     if(input$opt.mmm2 == "minT")
       str<-"Min Temperature(C)"
-    brk = c(seq(-30,30,10),50)
-    label10s = c(as.character(seq(-30,30,10)))
-    wx_range<-colorRampPalette(c(rgb(0,0.5,1), rgb(1,0.35,0) ))
     #Bin the temperatures into 10 degree buckets, using the "cut" funtion
     df$TempBucket <- cut(df$Temperature, breaks=brk, labels=label10s)
     p <- ggplot(data=df, aes(City, fill=TempBucket )) + geom_bar()  
@@ -452,6 +456,32 @@ server <- function(input, output) {
       ,axis.text.x = element_text(colour="grey20",angle=0,hjust=.5,vjust=.5,face="plain")
     )  
     print(p)  
+  })
+  
+  output$t1.7.Out <- renderPlot({
+    df <- summarized3.df()
+    if(input$opt.mmm2 == "meanT")
+      str<-"Mean Temperature(C)"
+    if(input$opt.mmm2 == "maxT")
+      str<-"Max Temperature(C)"
+    if(input$opt.mmm2 == "minT")
+      str<-"Min Temperature(C)"
+    numcolors <- length(unique(df$Temperature)) #how many colors do we need?
+    
+    m <- ggplot(df, aes(x=Temperature, fill=factor(Temperature)))
+    m <- m + geom_histogram(binwidth=input$binwidth)
+    m <- m + scale_fill_manual(values=wx_range(numcolors))
+    m <- m + facet_grid(City ~ .)
+    m <- m + ylab("Count of Days")
+    m<- m+labs(title=paste(str, "Histogram"))
+    m <- m + geom_vline(xintercept=c(10,20, 30),
+                        colour="#990000", linetype="dashed")
+    m <- m + geom_vline(xintercept=0,
+                        colour="#000000", linetype="dashed")
+    m <- m + geom_vline(xintercept=c(-10,-20,-30),
+                        colour="blue", linetype="dashed")
+    m <- m + theme(legend.position="none")
+    print(m)
   })
   
   
