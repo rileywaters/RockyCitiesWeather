@@ -247,7 +247,11 @@ ui <- dashboardPage(skin = "blue",
                                      "Snow.on.Grnd",
                                      "Spd.of.Max.Gust"),                 
                                 selected="Mean.Temp"),
-                    numericInput("m1opt3", "Mean to test against:", value = 10)
+                    numericInput("m1opt3", "Mean to test against:", value = 10),
+                    sliderInput(
+                      "m1opt4", "Years of data to sample from:", min = 1900, 
+                      max = 2017, value = c(1900,2017), sep=""
+                    )
                 )
               ),
               column(width = 6,
@@ -542,11 +546,11 @@ server <- function(input, output) {
   # m1 content
   output$m1.Out <- renderPrint({
     if(input$m1opt == "Vancouver")
-      df <- subset(DataAll, City == "Vancouver"& Year >=2006)
+      df <- subset(DataAll, City == "Vancouver"& Year >=input$m1opt4[1] & Year <= input$m1opt4[2])
     if(input$m1opt == "Kelowna")
-      df <- subset(DataAll, City == "Kelowna"& Year >=2006)
+      df <- subset(DataAll, City == "Kelowna"& Year >=input$m1opt4[1] & Year <= input$m1opt4[2])
     if(input$m1opt == "Calgary")
-      df <- subset(DataAll, City == "Calgary"& Year >=2006)
+      df <- subset(DataAll, City == "Calgary"& Year >=input$m1opt4[1] & Year <= input$m1opt4[2])
 
     y <- df[,input$m1opt2]
     m <- input$m1opt3
