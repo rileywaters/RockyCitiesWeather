@@ -36,10 +36,10 @@ ui <- dashboardPage(skin = "blue",
                  menuSubItem("Histogram", tabName = "t4")
                  ),
         menuItem("Testing", tabName = "test", icon = icon("eye"),
-                 menuSubItem("One-Way", tabName = "m1"),
-                 menuSubItem("Two-Way", tabName = "m2"),
-                 menuSubItem("ANOVA", tabName = "m3"),
-                 menuSubItem("Modelling", tabName = "m3")
+                 menuSubItem("T-Tests", tabName = "m1"),
+                 menuSubItem("ANOVA", tabName = "m2"),
+                 menuSubItem("Simulation Tests", tabName = "m3"),
+                 menuSubItem("Modelling", tabName = "m4")
         )
     )
   ),
@@ -214,50 +214,84 @@ ui <- dashboardPage(skin = "blue",
       
       # T4 tab content
       tabItem(tabName = "t4",
-              box(title = "Data Sample Selector", status = "warning", solidHeader = TRUE,collapsible = FALSE, collapsed = FALSE,width = 12,
-                  sliderInput(
-                    "range4", "Years of data to sample from:", min = 1900, 
-                    max = 2017, value = c(1900,2017), sep=""
-                  )
-              ),
-              box(title = "Histogram of Temperature", status = "primary", solidHeader = TRUE,collapsible = FALSE, width = 12,
-                  sliderInput(inputId = "binwidth",
-                              label = "Choose Temperature Band (degrees C)",
-                              min = 1, max = 10, step = 1, value = 2),
-                  plotOutput("t1.7.Out", height = 600)
-              )
-      ),
-      tabItem(tabName = "m1",
               column(width = 6,
-                box(title = "One Sample Test Selector", status = "warning", solidHeader = TRUE,collapsible = FALSE, collapsed = FALSE,width = 12,
-                    selectInput("m1opt", "Select City:",
-                                list("Vancouver",
-                                     "Kelowna", 
-                                     "Calgary"),                 
-                                selected="Vancouver"),
-                    selectInput("m1opt2", "Select Response:",
-                                list("Mean.Temp",
-                                     "Max.Temp", 
-                                     "Min.Temp",
-                                     "Heat.Deg.Days",
-                                     "Cool.Deg.Days",
-                                     "Total.Rain",
-                                     "Total.Snow",
-                                     "Total.Precip",
-                                     "Snow.on.Grnd",
-                                     "Spd.of.Max.Gust"),                 
-                                selected="Mean.Temp"),
-                    numericInput("m1opt3", "Mean to test against:", value = 10.1),
+                box(title = "Data Sample Selector", status = "warning", solidHeader = TRUE,collapsible = FALSE, collapsed = FALSE,width = 12,
                     sliderInput(
-                      "m1opt4", "Years of data to sample from:", min = 1900, 
+                      "range4", "Years of data to sample from:", min = 1900, 
                       max = 2017, value = c(1900,2017), sep=""
                     )
                 )
               ),
               column(width = 6,
-                box(title = "One Sample Results", status = "primary", solidHeader = TRUE,collapsible = FALSE, collapsed = FALSE,width = 12,
-                    verbatimTextOutput("m1.Out")
-                    )
+                box(title = "Histogram of Temperature", status = "primary", solidHeader = TRUE,collapsible = FALSE, width = 12,
+                    sliderInput(inputId = "binwidth",
+                                label = "Choose Temperature Band (degrees C)",
+                                min = 1, max = 10, step = 1, value = 2),
+                    plotOutput("t1.7.Out", height = 600)
+                )
+              )
+      ),
+      tabItem(tabName = "m1",
+              fluidRow(
+                column(width = 6,
+                  box(title = "One Sample Test Selector", status = "warning", solidHeader = TRUE,collapsible = FALSE, collapsed = FALSE,width = 12,
+                      selectInput("m1opt", "Select City:",
+                                  list("Vancouver",
+                                       "Kelowna", 
+                                       "Calgary"),                 
+                                  selected="Vancouver"),
+                      selectInput("m1opt2", "Select Response:",
+                                  list("Mean.Temp",
+                                       "Max.Temp", 
+                                       "Min.Temp",
+                                       "Heat.Deg.Days",
+                                       "Cool.Deg.Days",
+                                       "Total.Rain",
+                                       "Total.Snow",
+                                       "Total.Precip",
+                                       "Snow.on.Grnd",
+                                       "Spd.of.Max.Gust"),                 
+                                  selected="Mean.Temp"),
+                      numericInput("m1opt3", "Mean to test against:", value = 10.1),
+                      sliderInput(
+                        "m1opt4", "Years of data to sample from:", min = 1900, 
+                        max = 2017, value = c(1900,2017), sep=""
+                      )
+                  )
+                ),
+                column(width = 6,
+                  box(title = "One Sample Results", status = "primary", solidHeader = TRUE,collapsible = FALSE, collapsed = FALSE,width = 12,
+                      verbatimTextOutput("m1.Out")
+                      )
+                )
+              ),
+              fluidRow(
+                column(width = 6,
+                  box(title = "Two Sample Test Selector", status = "warning", solidHeader = TRUE,collapsible = FALSE, collapsed = FALSE,width = 12,
+                  checkboxGroupInput("m2opt", "Select Two Cities:", choices = c("Vancouver", "Kelowna", "Calgary"), selected = c("Vancouver", "Kelowna"),
+                                     inline =TRUE),
+                  selectInput("m2opt3", "Select Response:",
+                              list("Mean.Temp",
+                                   "Max.Temp", 
+                                   "Min.Temp",
+                                   "Heat.Deg.Days",
+                                   "Cool.Deg.Days",
+                                   "Total.Rain",
+                                   "Total.Snow",
+                                   "Total.Precip",
+                                   "Snow.on.Grnd",
+                                   "Spd.of.Max.Gust"),                 
+                              selected="Mean.Temp"),
+                  sliderInput(
+                    "m2opt2", "Years of data to sample from:", min = 1900, 
+                    max = 2017, value = c(1900,2017), sep="")
+                  )
+                ),
+                column(width = 6,
+                       box(title = "Two Sample Results", status = "primary", solidHeader = TRUE,collapsible = FALSE, collapsed = FALSE,width = 12,
+                           verbatimTextOutput("m2.Out")
+                       )
+                )
               )
               
       )
@@ -267,7 +301,7 @@ ui <- dashboardPage(skin = "blue",
 
 
 #=====================================================================SERVER=====================================================================
-server <- function(input, output) {
+server <- function(input, output, session) {
   
   # returns a summarized dataframe with only City, Month, and Temperatures
   # MeanDMax and MeanDMin are the averages of the maximum and minimum temperatures
@@ -561,6 +595,28 @@ server <- function(input, output) {
     }
   })
   
+  # m2 Content
+  output$m2.Out <- renderPrint({
+    if(length(input$m2opt) == 2){
+      if(input$m2opt[1] == "Vancouver" & input$m2opt[2] =="Kelowna"){
+        df <- subset(DataAll, City == "Vancouver"& Year >=input$m2opt2[1] & Year <= input$m2opt2[2])
+        df2 <- subset(DataAll, City == "Kelowna"& Year >=input$m2opt2[1] & Year <= input$m2opt2[2])
+      }
+      else if(input$m2opt[1] =="Vancouver" & input$m2opt[2] == "Calgary"){
+        df <- subset(DataAll, City == "Vancouver"& Year >=input$m2opt2[1] & Year <= input$m2opt2[2])
+        df2 <- subset(DataAll, City == "Calgary"& Year >=input$m2opt2[1] & Year <= input$m2opt2[2])
+      }
+      else if(input$m2opt[1] =="Kelowna" & input$m2opt[2] == "Calgary"){
+        df <- subset(DataAll, City == "Kelowna"& Year >=input$m2opt2[1] & Year <= input$m2opt2[2])
+        df2 <- subset(DataAll, City == "Calgary"& Year >=input$m2opt2[1] & Year <= input$m2opt2[2])
+      }
+      df$y <- df[,input$m2opt3]
+      df2$y <- df2[,input$m2opt3]
+      t.test(df$y,df2$y)
+    }
+    else
+      print("Please select exactly two cities.")
+  })
   
   
 }
