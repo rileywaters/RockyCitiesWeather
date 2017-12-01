@@ -216,14 +216,14 @@ ui <- dashboardPage(skin = "blue",
                     sliderInput(
                       "range4", "Years of data to sample from:", min = 1900, 
                       max = 2017, value = c(1900,2017), sep=""
-                    )
+                    ),
+                    sliderInput(inputId = "binwidth",
+                                label = "Choose Temperature Band (degrees C)",
+                                min = 1, max = 10, step = 1, value = 2)
                 )
               ),
               column(width = 6,
                 box(title = "Histogram of Temperature", status = "primary", solidHeader = TRUE,collapsible = FALSE, width = 12,
-                    sliderInput(inputId = "binwidth",
-                                label = "Choose Temperature Band (degrees C)",
-                                min = 1, max = 10, step = 1, value = 2),
                     p("This one may take a while to load!"),
                     plotOutput("t1.7.Out", height = 600)
                 )
