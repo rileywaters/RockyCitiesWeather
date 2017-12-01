@@ -350,9 +350,30 @@ ui <- dashboardPage(skin = "blue",
                        )
                 )
               )
-                  
+      ),
+      
+      tabItem(tabName = "m4",
+              fluidRow(
+                column(width = 6,
+                       box(title = "Simulation and T-Test input", status = "warning", solidHeader = TRUE,collapsible = FALSE, collapsed = FALSE,width = 12,
+                           checkboxGroupInput("m5opt", "Select Two Cities for Two-Sample:", choices = c("Vancouver", "Kelowna", "Calgary"), selected = c("Vancouver", "Kelowna"),
+                                              inline =TRUE),
+                           actionButton("simulate2", "Click Here for New Simulations!", width = '100%')
+                       ),
+                       box(title = "Two Sample T-Test Results", status = "primary", solidHeader = TRUE,collapsible = FALSE, collapsed = FALSE,width = 12,
+                           verbatimTextOutput("m5.Out")
+                       ),
+                       box(title = "ANOVA results", status = "primary", solidHeader = TRUE,collapsible = FALSE, collapsed = FALSE,width = 12,
+                           verbatimTextOutput("m5.1.Out")
+                       )
+                ),
                 
-              
+                column(width = 6,
+                       box(title = "Simulated Data Plots", status = "primary", solidHeader = TRUE,collapsible = FALSE, collapsed = FALSE,width = 12,
+                           plotOutput("m5.2.Out")
+                       ) 
+                )
+              )
       )
       
       
@@ -710,14 +731,14 @@ server <- function(input, output, session) {
     monthly.df <- ddply(df,.(Year, Month), summarize, meanT= mean(Mean.Temp, na.rm = TRUE))
     monthlyFit <- ts(monthly.df$meanT)
     fit <- auto.arima(monthlyFit)
+    sim <- simulate(fit,future=FALSE)
   })
   output$m4.Out <- renderPlot({
-    fit <- sim()
-    plot(simulate(fit,future=FALSE),col='red', xlab = "YearMonth (Starting 0 = Jan 2000)", ylab = "Temperature (C)",main = paste(input$m4opt, "Simulation"))
+    sim <- sim()
+    plot(sim,col='red', xlab = "YearMonth (Starting 0 = Jan 2000)", ylab = "Temperature (C)",main = paste(input$m4opt, "Simulation"))
   })
   output$m4.1.Out <- renderPrint({
-    fit <- sim()
-    y <- simulate(fit,future=FALSE)
+    y <- sim()
     if(is.na(input$m4opt3))
       print("No mean entered")
     else{
@@ -725,6 +746,90 @@ server <- function(input, output, session) {
       t.test(y,mu=m)
     }
   })
+  
+  #m5 content
+  simV <- eventReactive(input$simulate2,{
+    df <- subset(DataAll, City == "Vancouver" & Year >= 2000 & Year <= 2017)
+    monthly.df <- ddply(df,.(Year, Month), summarize, meanT= mean(Mean.Temp, na.rm = TRUE))
+    monthlyFit <- ts(monthly.df$meanT)
+    fit <- auto.arima(monthlyFit)
+    sim <- simulate(fit,future=FALSE)
+  })
+  simK <- eventReactive(input$simulate2,{
+    df <- subset(DataAll, City == "Kelowna" & Year >= 2000 & Year <= 2017)
+    monthly.df <- ddply(df,.(Year, Month), summarize, meanT= mean(Mean.Temp, na.rm = TRUE))
+    monthlyFit <- ts(monthly.df$meanT)
+    fit <- auto.arima(monthlyFit)
+    sim <- simulate(fit,future=FALSE)
+  })
+  simC <- eventReactive(input$simulate2,{
+    df <- subset(DataAll, City == "Calgary" & Year >= 2000 & Year <= 2017)
+    monthly.df <- ddply(df,.(Year, Month), summarize, meanT= mean(Mean.Temp, na.rm = TRUE))
+    monthlyFit <- ts(monthly.df$meanT)
+    fit <- auto.arima(monthlyFit)
+    sim <- simulate(fit,future=FALSE)
+  })
+  output$m5.Out <- renderPrint({
+    if(length(input$m5opt) == 2){
+      if(input$m5opt[1] == "Vancouver" & input$m5opt[2] =="Kelowna"){
+        sim <- simV()
+        sim2 <- simK()
+        
+      }
+      else if(input$m5opt[1] =="Vancouver" & input$m5opt[2] == "Calgary"){
+        sim <- simV()
+        sim2 <- simC()
+      }
+      else if(input$m5opt[1] =="Kelowna" & input$m5opt[2] == "Calgary"){
+        sim <- simK()
+        sim2 <- simC()
+      }
+
+      t.test(sim,sim2)
+    }
+    else
+      print("Please select exactly two cities.")
+    
+  })
+  output$m5.1.Out <- renderPrint({
+        sim <- simV()
+        sim2 <- simK()
+        sim3 <- simC()
+      
+        names <- c("Mean", "City")
+        df1 <- data.frame(matrix(ncol = 2, nrow = 216)) 
+        colnames(df1) <- names
+        df2 <- data.frame(matrix(ncol = 2, nrow = 204)) 
+        colnames(df2) <- names
+        df3 <- data.frame(matrix(ncol = 2, nrow = 216)) 
+        colnames(df3) <- names
+
+        df1$Mean <- as.numeric(sim)
+        df1$City <- "Vancouver"
+
+        df2$City <- "Kelowna"
+        df2$Mean <- as.numeric(sim2)
+
+        df3$City <- "Calgary"
+        df3$Mean <- as.numeric(sim3)
+        
+        
+        df <- rbind(df1, df2, df3)
+        summary(aov(df$Mean~df$City))
+  })
+  output$m5.2.Out <- renderPlot({
+    sim <- simV()
+    sim2 <- simK()
+    sim3 <- simC()
+    plot(sim,col='red', xlab = "YearMonth (Starting 0 = Jan 2000)", ylab = "Temperature (C)",main = (" Three City Simulation"))
+    lines(sim2,col='green')
+    lines(sim3, col='blue')
+    legend("topright", c("Vancouver", "Kelowna", "Calgary"),lty=c(1,1),lwd=c(2.5,2.5),col=c("red","blue","green"))
+    #lty(c(1,1))
+    #lwd=c(2.5,2.5)
+    #col=c("red","blue","green")
+    })
+ 
   
 }
 
