@@ -13,8 +13,11 @@ monthly.df <- ddply(df,.(Year, Month), summarize,
                     meanT= mean(Mean.Temp, na.rm = TRUE))
 
 a2 <- ts(monthly.df$meanT)
-fit <- Arima(a2)
+fit <- auto.arima(a2)
 plot(simulate(fit,future=FALSE),col='red', xlab = "YearMonth (Starting 0 = Jan 2000)")
+
+p <- predict(fit, n.ahead = 12)
+
 
 
 lines(c(USAccDeaths))

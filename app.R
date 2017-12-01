@@ -308,19 +308,44 @@ ui <- dashboardPage(skin = "blue",
                                      list("Vancouver",
                                           "Kelowna", 
                                           "Calgary"),                 
-                                     selected="Vancouver")
+                                     selected="Vancouver"),
+                         sliderInput("m3opt2", "Number of months to predict after Dec 2017:", min = 1, max = 36, value = 12)
                      ),
-                     box(title = "Arima Plot", status = "primary", solidHeader = TRUE,collapsible = FALSE, collapsed = FALSE,width = 12,
-                         plotOutput("m3.1.Out")
-                     )
+                     box(title = "Prediction Results", status = "primary", solidHeader = TRUE,collapsible = FALSE, collapsed = FALSE,width = 12,
+                         p("Each output in the list is the predicted mean temperature of the next month. The first result is for Jan 2018, and so on.."),
+                         verbatimTextOutput("m3.2.Out"))
               ),
               column(width = 6,
                      box(title = "Arima Summary", status = "primary", solidHeader = TRUE,collapsible = FALSE, collapsed = FALSE,width = 12,
                          verbatimTextOutput("m3.Out")
+                     ),
+                     box(title = "Arima Plot", status = "primary", solidHeader = TRUE,collapsible = FALSE, collapsed = FALSE,width = 12,
+                         plotOutput("m3.1.Out")
                      )
               )
-      )
+      ),
       
+      # m3 tab content
+      tabItem(tabName = "m3",
+              column(width = 6,
+                     box(title = "Model Description", status = "warning", solidHeader = TRUE,collapsible = FALSE, collapsed = FALSE,width = 12,
+                         selectInput("m4opt", "Select City:",
+                                     list("Vancouver",
+                                          "Kelowna", 
+                                          "Calgary"),                 
+                                     selected="Vancouver")
+                         ),
+                     box(title = "Simulated Data Plot", status = "primary", solidHeader = TRUE,collapsible = FALSE, collapsed = FALSE,width = 12,
+                        plotOutput("m4.Out")
+                     )
+              ),
+              column(width = 6,
+                     box(title = "Something", status = "primary", solidHeader = TRUE,collapsible = FALSE, collapsed = FALSE,width = 12
+                         
+                     )
+                     
+              )
+    )
       
       
       
@@ -664,7 +689,24 @@ server <- function(input, output, session) {
     fcast <- forecast(fit, h=18)
     plot(fcast, xlab = "YearMonth, starting with 0 = Jan 2000", ylab = "Temperature")
   })
+  output$m3.2.Out <- renderPrint({
+    fit <- fitted()
+    p <- predict(fit, n.ahead = input$m3opt2)
+    print(p$pred)
+    
+  })
   
+  #m4 content
+  fitted2 <- reactive({
+    df <- subset(DataAll, City == input$m4opt & Year >= 2000 & Year <= 2017)
+    monthly.df <- ddply(df,.(Year, Month), summarize, meanT= mean(Mean.Temp, na.rm = TRUE))
+    monthlyFit <- ts(monthly.df$meanT)
+    fit <- auto.arima(monthlyFit)
+  })
+  output$m4.Out <- renderPlot({
+    fit <- fitted()
+    plot(simulate(fit,future=FALSE),col='red', xlab = "YearMonth (Starting 0 = Jan 2000)")
+  })
   
   
 }
