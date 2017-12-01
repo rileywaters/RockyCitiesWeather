@@ -212,7 +212,7 @@ ui <- dashboardPage(skin = "blue",
       # Histogram Content
       tabItem(tabName = "t4",
               column(width = 6,
-                box(title = "Data Sample Selector", status = "warning", solidHeader = TRUE,collapsible = FALSE, collapsed = FALSE,width = 12,
+                box(title = "Histogram Selector", status = "warning", solidHeader = TRUE,collapsible = FALSE, collapsed = FALSE,width = 12,
                     sliderInput(
                       "range4", "Years of data to sample from:", min = 1900, 
                       max = 2017, value = c(1900,2017), sep=""
