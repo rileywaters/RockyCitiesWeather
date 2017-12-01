@@ -8,7 +8,7 @@
 
 # Automatically makes sure all required packages are installed and attached
 if (!require("pacman")) install.packages("pacman")
-pacman::p_load(shiny, shinydashboard, DT, ggplot2, plyr)
+pacman::p_load(shiny, shinydashboard, DT, ggplot2, plyr, forecast)
 
 # Read in the cleaned csv
 setwd(dirname(rstudioapi::getActiveDocumentContext()$path))
@@ -36,8 +36,8 @@ ui <- dashboardPage(skin = "blue",
                  menuSubItem("Histogram", tabName = "t4")
                  ),
         menuItem("Testing", tabName = "test", icon = icon("eye"),
-                 menuSubItem("T-Tests", tabName = "m1"),
-                 menuSubItem("ANOVA", tabName = "m2"),
+                 menuSubItem("Simple T-Tests", tabName = "m1"),
+                 menuSubItem("Model Fitting", tabName = "m2"),
                  menuSubItem("Simulation Tests", tabName = "m3"),
                  menuSubItem("Modelling", tabName = "m4")
         )
@@ -294,7 +294,37 @@ ui <- dashboardPage(skin = "blue",
                 )
               )
               
+      ),
+      # m2 tab content
+      tabItem(tabName = "m2",
+              column(width = 6,
+                     box(title = "Model Description", status = "warning", solidHeader = TRUE,collapsible = FALSE, collapsed = FALSE,width = 12,
+                         p(style = "font-family: 'Source Sans Pro'; font-size: 14px",
+                           "A model was fit on each city's data for the purposes of simulation, prediction, and advanced tests. 
+                           The models used are seasonal time-series models on the Mean Temperature of each month from 2000 to 2017.
+                           It is possible to fit a model on the daily Mean Temperatures (or other responses) since 1900, 
+                            but the execution time to fit these models proved to be too long for the purposes of this app."),
+                         selectInput("m3opt", "Select City:",
+                                     list("Vancouver",
+                                          "Kelowna", 
+                                          "Calgary"),                 
+                                     selected="Vancouver")
+                     ),
+                     box(title = "Arima Plot", status = "primary", solidHeader = TRUE,collapsible = FALSE, collapsed = FALSE,width = 12,
+                         plotOutput("m3.1.Out")
+                     )
+              ),
+              column(width = 6,
+                     box(title = "Arima Summary", status = "primary", solidHeader = TRUE,collapsible = FALSE, collapsed = FALSE,width = 12,
+                         verbatimTextOutput("m3.Out")
+                     )
+              )
       )
+      
+      
+      
+      
+      
     )
   )
 )
@@ -617,6 +647,24 @@ server <- function(input, output, session) {
     else
       print("Please select exactly two cities.")
   })
+  
+  #m3 content
+  fitted <- reactive({
+    df <- subset(DataAll, City == input$m3opt & Year >= 2000 & Year <= 2017)
+    monthly.df <- ddply(df,.(Year, Month), summarize, meanT= mean(Mean.Temp, na.rm = TRUE))
+    monthlyFit <- ts(monthly.df$meanT)
+    fit <- auto.arima(monthlyFit)
+  })
+  output$m3.Out <- renderPrint({
+    fit <- fitted()
+    fit
+  })
+  output$m3.1.Out <- renderPlot({
+    fit <- fitted()
+    fcast <- forecast(fit, h=18)
+    plot(fcast, xlab = "YearMonth, starting with 0 = Jan 2000", ylab = "Temperature")
+  })
+  
   
   
 }
