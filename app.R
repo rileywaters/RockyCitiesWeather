@@ -37,9 +37,9 @@ ui <- dashboardPage(skin = "blue",
                  ),
         menuItem("Testing", tabName = "test", icon = icon("eye"),
                  menuSubItem("Simple T-Tests", tabName = "m1"),
-                 menuSubItem("Model Fitting", tabName = "m2"),
-                 menuSubItem("Simulation Tests", tabName = "m3"),
-                 menuSubItem("Modelling", tabName = "m4")
+                 menuSubItem("Prediction", tabName = "m2"),
+                 menuSubItem("One Sample Simulation", tabName = "m3"),
+                 menuSubItem("Multiple Simulation", tabName = "m4")
         )
     )
   ),
@@ -227,6 +227,7 @@ ui <- dashboardPage(skin = "blue",
                     sliderInput(inputId = "binwidth",
                                 label = "Choose Temperature Band (degrees C)",
                                 min = 1, max = 10, step = 1, value = 2),
+                    p("This one may take a while to load!"),
                     plotOutput("t1.7.Out", height = 600)
                 )
               )
@@ -300,8 +301,7 @@ ui <- dashboardPage(skin = "blue",
               column(width = 6,
                      box(title = "Model Description", status = "warning", solidHeader = TRUE,collapsible = FALSE, collapsed = FALSE,width = 12,
                          p(style = "font-family: 'Source Sans Pro'; font-size: 14px",
-                           "A model was fit on each city's data for the purposes of simulation, prediction, and advanced tests. 
-                           The models used are seasonal time-series models on the Mean Temperature of each month from 2000 to 2017.
+                           "The models used are seasonal time-series models on the Mean Temperature of each month from 2000 to 2017.
                            It is possible to fit a model on the daily Mean Temperatures (or other responses) since 1900, 
                             but the execution time to fit these models proved to be too long for the purposes of this app."),
                          selectInput("m3opt", "Select City:",
@@ -312,7 +312,7 @@ ui <- dashboardPage(skin = "blue",
                          sliderInput("m3opt2", "Number of months to predict after Dec 2017:", min = 1, max = 36, value = 12)
                      ),
                      box(title = "Prediction Results", status = "primary", solidHeader = TRUE,collapsible = FALSE, collapsed = FALSE,width = 12,
-                         p("Each output in the list is the predicted mean temperature of the next month. The first result is for Jan 2018, and so on.."),
+                         p("Each output in the list is the predicted mean temperature of the next month. The first result is for Jan 2018, followed by Feb 2018 and so on"),
                          verbatimTextOutput("m3.2.Out"))
               ),
               column(width = 6,
@@ -327,25 +327,33 @@ ui <- dashboardPage(skin = "blue",
       
       # m3 tab content
       tabItem(tabName = "m3",
-              column(width = 6,
-                     box(title = "Model Description", status = "warning", solidHeader = TRUE,collapsible = FALSE, collapsed = FALSE,width = 12,
-                         selectInput("m4opt", "Select City:",
-                                     list("Vancouver",
-                                          "Kelowna", 
-                                          "Calgary"),                 
-                                     selected="Vancouver")
-                         ),
-                     box(title = "Simulated Data Plot", status = "primary", solidHeader = TRUE,collapsible = FALSE, collapsed = FALSE,width = 12,
-                        plotOutput("m4.Out")
-                     )
-              ),
-              column(width = 6,
-                     box(title = "Something", status = "primary", solidHeader = TRUE,collapsible = FALSE, collapsed = FALSE,width = 12
-                         
-                     )
-                     
+              fluidRow(
+                column(width = 6,
+                       box(title = "Simulation and T-Test input", status = "warning", solidHeader = TRUE,collapsible = FALSE, collapsed = FALSE,width = 12,
+                           selectInput("m4opt", "Select City:",
+                                       list("Vancouver",
+                                            "Kelowna", 
+                                            "Calgary"),                 
+                                       selected="Vancouver"),
+                           actionButton("simulate", "Click Here for a New Simulation!", width = '100%'),
+                           br(),
+                           numericInput("m4opt3", "Mean Temperature to test against:", value = 10.1)
+                           ),
+                         box(title = "Simulated One Sample Test Results", status = "primary", solidHeader = TRUE,collapsible = FALSE, collapsed = FALSE,width = 12,
+                             verbatimTextOutput("m4.1.Out")
+                         )
+                ),
+                
+                column(width = 6,
+                       box(title = "Simulated Data Plot", status = "primary", solidHeader = TRUE,collapsible = FALSE, collapsed = FALSE,width = 12,
+                           plotOutput("m4.Out")
+                       )
+                )
               )
-    )
+                  
+                
+              
+      )
       
       
       
@@ -687,7 +695,7 @@ server <- function(input, output, session) {
   output$m3.1.Out <- renderPlot({
     fit <- fitted()
     fcast <- forecast(fit, h=18)
-    plot(fcast, xlab = "YearMonth, starting with 0 = Jan 2000", ylab = "Temperature")
+    plot(fcast, xlab = "YearMonth, starting with 0 = Jan 2000", ylab = "Temperature (C)", main = paste(input$m3opt, "Forecast"))
   })
   output$m3.2.Out <- renderPrint({
     fit <- fitted()
@@ -697,17 +705,26 @@ server <- function(input, output, session) {
   })
   
   #m4 content
-  fitted2 <- reactive({
+  sim <- eventReactive(input$simulate,{
     df <- subset(DataAll, City == input$m4opt & Year >= 2000 & Year <= 2017)
     monthly.df <- ddply(df,.(Year, Month), summarize, meanT= mean(Mean.Temp, na.rm = TRUE))
     monthlyFit <- ts(monthly.df$meanT)
     fit <- auto.arima(monthlyFit)
   })
   output$m4.Out <- renderPlot({
-    fit <- fitted()
-    plot(simulate(fit,future=FALSE),col='red', xlab = "YearMonth (Starting 0 = Jan 2000)")
+    fit <- sim()
+    plot(simulate(fit,future=FALSE),col='red', xlab = "YearMonth (Starting 0 = Jan 2000)", ylab = "Temperature (C)",main = paste(input$m4opt, "Simulation"))
   })
-  
+  output$m4.1.Out <- renderPrint({
+    fit <- sim()
+    y <- simulate(fit,future=FALSE)
+    if(is.na(input$m4opt3))
+      print("No mean entered")
+    else{
+      m <- input$m4opt3
+      t.test(y,mu=m)
+    }
+  })
   
 }
 
